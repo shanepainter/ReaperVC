@@ -12,7 +12,7 @@
 #                             Useful for naming tracks, entering values, etc.
 #  text_delay                 Wait time (in seconds, e.g., 0.3) after action executes
 #                             before text_input is typed. Allows UI to be ready.
-#  press_key                  Key to press via xdotool after text is typed
+#  press_key                  Key to press (xdotool key name) after text is typed
 #                             (e.g., "Return" to confirm, "Escape" to cancel)
 #  key_delay                  Wait time (in seconds, e.g., 0.05) after text_input
 #                             before press_key is executed

@@ -32,11 +32,14 @@ class VoiceInput:
 			config_path: Path to voice configuration file
 		"""
 		# Load configuration
-		with open(config_path, 'r') as f:
+		with open(config_path, 'r', encoding='utf-8') as f:
 			self.config = yaml.safe_load(f)
 
 		# Initialize components
 		audio_config = self.config.get('audio', {})
+		if sys.platform == "win32":
+			# Device indices are machine- and OS-specific; apply the Windows overrides
+			audio_config = {**audio_config, **(audio_config.get('windows') or {})}
 		stt_config = self.config.get('stt', {})
 		vad_config = self.config.get('vad', {})
 		recording_config = self.config.get('recording_mode', {})
@@ -51,6 +54,7 @@ class VoiceInput:
 		# Audio capture
 		self.audio_capture = AudioCapture(
 			device_index=audio_config.get('device_index'),
+			device_name=audio_config.get('device_name'),
 			sample_rate=audio_config.get('sample_rate', 16000),
 			frame_duration_ms=audio_config.get('frame_duration_ms', 30),
 			input_channel=input_channel

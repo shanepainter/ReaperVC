@@ -5,6 +5,44 @@ Direct voice command execution via OSC - fully customizable
 """
 
 import sys
+from colors import Colors
+from runtime_paths import IS_WINDOWS, STOP_TELEMETRY_FLAG, EXTERNAL_COMMAND_FILE, find_other_instances, write_pid_file
+
+
+def _claim_instance():
+	"""Abort if ReaperVC is already running, otherwise register this process"""
+	if IS_WINDOWS:
+		# Output is redirected to a log file by the launcher; the default
+		# code page cannot encode some of the symbols printed below
+		for stream in (sys.stdout, sys.stderr):
+			try:
+				stream.reconfigure(encoding='utf-8', errors='replace')
+			except Exception:
+				pass
+
+	# Check if ReaperVC is already running
+	try:
+		other_pids = find_other_instances()
+		if other_pids:
+			print(Colors.yellow("[!] ReaperVC is already running (PID: {})".format(', '.join(other_pids))))
+			print(Colors.yellow("[!] Aborting to prevent duplicate instances"))
+			sys.exit(0)
+	except Exception as e:
+		# If check fails, continue anyway (better to start than fail)
+		print(Colors.yellow(f"[!] Could not check for existing instances: {e}"))
+
+	if IS_WINDOWS:
+		try:
+			write_pid_file()
+		except OSError as e:
+			print(Colors.yellow(f"[!] Could not write PID file: {e}"))
+
+
+if __name__ == "__main__":
+	# Runs before the slow imports below (Whisper/torch) so a duplicate launch
+	# exits quickly and the ReaScripts can see this process straight away
+	_claim_instance()
+
 import signal
 import yaml
 import time
@@ -51,23 +89,28 @@ class ReaperVCController:
 		if config_path is None:
 			config_path = Path(__file__).parent.parent / "config" / "config.yaml"
 
-		with open(config_path, 'r') as f:
+		with open(config_path, 'r', encoding='utf-8') as f:
 			self.config = yaml.safe_load(f)
 
 		# Load action mapper
 		reaper_actions_path = Path(__file__).parent.parent / "reaper-actions.txt"
+		if not reaper_actions_path.exists():
+			# Windows hides file extensions, so the dump is easily saved with a doubled one
+			doubled = reaper_actions_path.with_name("reaper-actions.txt.txt")
+			if doubled.exists():
+				reaper_actions_path = doubled
 		self.action_mapper = ActionMapper(reaper_actions_path)
 
 		# Load default commands
 		commands_path = Path(__file__).parent.parent / "config" / "default_commands.yaml"
-		with open(commands_path, 'r') as f:
+		with open(commands_path, 'r', encoding='utf-8') as f:
 			self.commands_config = yaml.safe_load(f)
 
 		# Load custom commands (optional - can override defaults)
 		custom_commands_path = Path(__file__).parent.parent / "config" / "custom_commands.yaml"
 		if custom_commands_path.exists():
 			print(Colors.blue("[+] Loading custom commands..."))
-			with open(custom_commands_path, 'r') as f:
+			with open(custom_commands_path, 'r', encoding='utf-8') as f:
 				custom_config = yaml.safe_load(f)
 				if custom_config and 'commands' in custom_config:
 					# Merge custom commands into main config (custom overwrites defaults)
@@ -354,7 +397,7 @@ class ReaperVCController:
 			# Signal telemetry monitor to stop by writing flag file
 			try:
 				import os
-				flag_file = "/tmp/reapervc_stop_telemetry"
+				flag_file = STOP_TELEMETRY_FLAG
 				with open(flag_file, 'w') as f:
 					f.write("stop")
 				print("Signaling telemetry monitor to stop...")
@@ -573,10 +616,10 @@ class ReaperVCController:
 
 	def _check_external_commands(self):
 		"""Check for external command trigger file"""
-		trigger_file = Path("/tmp/reapervc_external_command")
+		trigger_file = Path(EXTERNAL_COMMAND_FILE)
 		if trigger_file.exists():
 			try:
-				with open(trigger_file, 'r') as f:
+				with open(trigger_file, 'r', encoding='utf-8') as f:
 					command_text = f.read().strip()
 				# Delete the file
 				trigger_file.unlink()
@@ -641,6 +684,7 @@ class ReaperVCController:
 			import os
 			script_dir = Path(os.path.abspath(__file__)).parent.parent
 			telemetry_path = script_dir / "extras" / "telemetry.md"
+			telemetry_path.parent.mkdir(exist_ok=True)
 			self.telemetry.write_to_file(telemetry_path)
 			print(f"[+] Telemetry saved to {telemetry_path}")
 		except Exception as e:
@@ -651,28 +695,6 @@ class ReaperVCController:
 
 def main():
 	"""Main entry point"""
-	# Check if ReaperVC is already running
-	import subprocess
-	try:
-		result = subprocess.run(
-			["pgrep", "-f", "reapervc.py"],
-			capture_output=True,
-			text=True
-		)
-		# If pgrep found processes
-		if result.stdout.strip():
-			pids = result.stdout.strip().split('\n')
-			current_pid = str(subprocess.os.getpid())
-			# Filter out current process
-			other_pids = [pid for pid in pids if pid != current_pid]
-			if other_pids:
-				print(Colors.yellow("[!] ReaperVC is already running (PID: {})".format(', '.join(other_pids))))
-				print(Colors.yellow("[!] Aborting to prevent duplicate instances"))
-				sys.exit(0)
-	except Exception as e:
-		# If check fails, continue anyway (better to start than fail)
-		print(Colors.yellow(f"[!] Could not check for existing instances: {e}"))
-
 	app = None
 
 	def signal_handler(sig, frame):

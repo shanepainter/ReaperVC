@@ -3,32 +3,8 @@
 -- Author: ReaperVC Project
 -- Version: 1.0
 
--- Helper Functions
-function IsReaperVCRunning()
-	-- Very specific check - look ONLY for Python process (not bash shells)
-	local handle = io.popen("pgrep -f '^python.*src/reapervc' 2>/dev/null")
-	if not handle then
-		return false
-	end
-	local result = handle:read("*a")
-	handle:close()
-
-	-- Additional verification - check if result contains actual PID
-	if result and result ~= "" then
-		-- Trim whitespace and check if it's a valid number
-		result = result:gsub("^%s*(.-)%s*$", "%1")
-		if tonumber(result) then
-			return true
-		end
-	end
-
-	return false
-end
-
-function KillAllProcesses()
-	-- Kill all ReaperVC processes (including stale ones)
-	os.execute("pkill -9 -f 'python.*reapervc' 2>/dev/null")
-end
+-- Shared helpers (ReaperVC_Common.lua must be in the same folder as this script)
+local VC = dofile(debug.getinfo(1, "S").source:match("^@?(.*[/\\])") .. "ReaperVC_Common.lua")
 
 -- Main
 function Main()
@@ -36,18 +12,18 @@ function Main()
 	reaper.SetExtState("ReaperVC", "telemetry_stop", "1", false)
 
 	-- Kill all processes (SIGKILL to ensure they stop)
-	KillAllProcesses()
+	VC.KillAll()
 
 	-- Clean up log files
-	os.execute("rm -f /tmp/reapervc.log 2>/dev/null")
-	os.execute("rm -f /tmp/reapervc_telemetry.log 2>/dev/null")
+	os.remove(VC.LOG_FILE)
+	os.remove(VC.TELEMETRY_FILE)
 
 	-- Wait a moment and verify
 	reaper.defer(function()
-		if IsReaperVCRunning() then
+		if VC.IsRunning() then
 			reaper.ShowMessageBox(
 				"Warning: Some processes may still be running.\n\n" ..
-				"Try manually:\npkill -9 -f reapervc",
+				"Try manually:\n" .. VC.manual_kill_hint,
 				"ReaperVC",
 				0
 			)

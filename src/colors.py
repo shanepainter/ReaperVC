@@ -2,6 +2,14 @@
 ANSI Color Codes for Terminal Output
 """
 
+import os
+import sys
+
+if sys.platform == "win32":
+	# Switches the Windows console into ANSI escape (VT) mode
+	os.system("")
+
+
 class Colors:
 	"""ANSI color codes for terminal output"""
 

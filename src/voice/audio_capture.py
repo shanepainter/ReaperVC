@@ -16,8 +16,9 @@ class AudioCapture:
 	Provides audio frames to VAD and STT modules
 	"""
 
-	def __init__(self, device_index=None, sample_rate=16000, frame_duration_ms=30, input_channel=0):
+	def __init__(self, device_index=None, sample_rate=16000, frame_duration_ms=30, input_channel=0, device_name=None):
 		self.device_index = device_index
+		self.device_name = device_name
 		self.sample_rate = sample_rate
 		self.frame_duration_ms = frame_duration_ms
 		self.input_channel = input_channel  # 0 = input 1, 1 = input 2
@@ -34,6 +35,7 @@ class AudioCapture:
 		# PyAudio setup
 		self.audio = pyaudio.PyAudio()
 		self.stream = None
+		self.channels = 2
 		self.is_running = False
 		self.capture_thread = None
 
@@ -47,7 +49,7 @@ class AudioCapture:
 
 		# Reshape to (samples, channels) and extract the desired channel
 		try:
-			audio_frame = audio_frame.reshape(-1, 2)[:, self.input_channel]
+			audio_frame = audio_frame.reshape(-1, self.channels)[:, self.input_channel]
 		except ValueError as e:
 			# If reshape fails, we might be getting mono data
 			print(f"Warning: Reshape failed (expected stereo): {e}")
@@ -58,13 +60,45 @@ class AudioCapture:
 
 		return (in_data, pyaudio.paContinue)
 
+	def _resolve_device(self):
+		"""Pick the input device and how many channels to open on it"""
+		# A device name survives index reshuffles (common on Windows)
+		if self.device_name:
+			wanted = self.device_name.lower()
+			for i in range(self.audio.get_device_count()):
+				info = self.audio.get_device_info_by_index(i)
+				if info.get('maxInputChannels', 0) > 0 and wanted in info.get('name', '').lower():
+					self.device_index = i
+					break
+			else:
+				print(f"Warning: No input device matching '{self.device_name}' - using default input")
+				self.device_index = None
+
+		try:
+			if self.device_index is None:
+				info = self.audio.get_default_input_device_info()
+			else:
+				info = self.audio.get_device_info_by_index(self.device_index)
+			max_channels = int(info.get('maxInputChannels', 0))
+		except Exception as e:
+			print(f"Warning: Could not query input device {self.device_index}: {e} - using default input")
+			self.device_index = None
+			max_channels = int(self.audio.get_default_input_device_info().get('maxInputChannels', 0))
+
+		# Open stereo to access both inputs, unless the device is mono (USB/webcam mics)
+		self.channels = max(1, min(2, max_channels))
+		if self.input_channel >= self.channels:
+			print(f"Warning: Input {self.input_channel + 1} not available on this device - using input 1")
+			self.input_channel = 0
+
 	def start(self):
 		"""Start capturing audio"""
+		self._resolve_device()
 		print(f"Starting audio capture (device={self.device_index}, rate={self.sample_rate}Hz, channel={self.input_channel + 1})")
 
 		self.stream = self.audio.open(
 			format=pyaudio.paInt16,
-			channels=2,  # Open stereo to access both inputs
+			channels=self.channels,
 			rate=self.sample_rate,
 			input=True,
 			input_device_index=self.device_index,

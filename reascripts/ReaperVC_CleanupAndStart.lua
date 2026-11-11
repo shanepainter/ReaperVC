@@ -4,11 +4,13 @@
 -- Version: 1.0
 -- Use this if Toggle/Start scripts are having issues
 
+-- Shared helpers (ReaperVC_Common.lua must be in the same folder as this script)
+local VC = dofile(debug.getinfo(1, "S").source:match("^@?(.*[/\\])") .. "ReaperVC_Common.lua")
+
 -- Configuration
 local REAPERVC_PATH = reaper.GetExtState("ReaperVC", "install_path")
 if REAPERVC_PATH == "" then
-	-- Default path - update this to match your installation
-	REAPERVC_PATH = os.getenv("HOME") .. "/Apps/Audio/ReaperVC"
+	REAPERVC_PATH = VC.DefaultPath()
 end
 
 -- Main
@@ -17,15 +19,14 @@ function Main()
 
 	-- Kill ALL ReaperVC processes
 	reaper.ShowConsoleMsg("[ReaperVC Cleanup] Killing all ReaperVC processes...\n")
-	os.execute("pkill -9 -f 'python.*reapervc' 2>/dev/null")
+	VC.KillAll()
 
 	-- Clean up log file
 	reaper.ShowConsoleMsg("[ReaperVC Cleanup] Removing old log file...\n")
-	os.execute("rm -f /tmp/reapervc.log 2>/dev/null")
+	os.remove(VC.LOG_FILE)
 
 	-- Verify path exists
-	local f = io.open(REAPERVC_PATH .. "/reaper-vc.sh", "r")
-	if not f then
+	if not VC.HasLauncher(REAPERVC_PATH) then
 		reaper.ShowMessageBox(
 			"ReaperVC not found at:\n" .. REAPERVC_PATH .. "\n\n" ..
 			"Please run ReaperVC_SetPath.lua to configure.",
@@ -34,15 +35,10 @@ function Main()
 		)
 		return
 	end
-	f:close()
 
 	-- Start fresh
 	reaper.ShowConsoleMsg("[ReaperVC Cleanup] Starting ReaperVC...\n")
-	local cmd = string.format(
-		"cd '%s' && nohup ./reaper-vc.sh > /tmp/reapervc.log 2>&1 &",
-		REAPERVC_PATH
-	)
-	os.execute(cmd)
+	VC.Launch(REAPERVC_PATH)
 
 	-- Show success message (don't check immediately, let it start)
 	reaper.ShowConsoleMsg("[ReaperVC Cleanup] Started! Initializing...\n")

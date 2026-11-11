@@ -39,7 +39,8 @@ class ActionMapper:
 				"and save the output as reaper-actions.txt in the project root."
 			)
 
-		with open(filepath, 'r', encoding='utf-8') as f:
+		# utf-8-sig + replace: tolerate a BOM or a legacy code page (files saved on Windows)
+		with open(filepath, 'r', encoding='utf-8-sig', errors='replace') as f:
 			for line in f:
 				line = line.strip()
 				if not line:

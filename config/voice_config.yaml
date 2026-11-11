@@ -6,6 +6,9 @@ audio:
   mic_setup: "single"
   # Audio input device index (null for default, or specific device index)
   device_index: 6  # JACK device for shared access with Reaper
+  # Pick the input device by (partial) name instead of index, e.g. "Scarlett"
+  # Takes precedence over device_index. List devices: python src/voice/audio_capture.py
+  device_name: null
   # Input channel (0 = input 1, 1 = input 2)
   input_channel: 0  # Using input 1 on Scarlett 2i2
   # Sample rate (Hz)
@@ -16,6 +19,10 @@ audio:
   buffer_size: 4096
   # Input gain multiplier (1.0 = no gain)
   input_gain: 1.5  # Increased for better signal-to-noise ratio
+  # Overrides applied on Windows only (any audio setting above can go here)
+  windows:
+    device_index: null  # null = Windows default recording device
+    device_name: null
 
 # Speech-to-Text Settings
 stt:

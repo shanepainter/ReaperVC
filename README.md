@@ -83,6 +83,20 @@ You: "save project"
 pip install -r requirements.txt
 ```
 
+#### Windows (experimental)
+
+Windows support is new and has not yet been tested on real hardware - please report what you find.
+
+**Step-by-step guide for non-technical users: [docs/WINDOWS_SETUP.md](docs/WINDOWS_SETUP.md)**
+
+In short:
+
+- Install Python 3.11-3.13 from python.org (not the Microsoft Store edition), then double-click `install-windows.bat`. It creates `venv`, installs the requirements and downloads the Whisper model.
+- `reaper-vc.bat` is the Windows launcher (the ReaScripts start it for you). `ReaperVC_Common.lua` must stay in the same folder as the other scripts, but does not need to be loaded as an action.
+- **Microphone:** ReaperVC listens on the Windows default recording device. To pick another, set `device_name` (part of the device's name) under `audio: windows:` in `config/voice_config.yaml`. List devices with `venv\Scripts\python src\voice\audio_capture.py`.
+- **Sharing an audio interface with Reaper:** if Reaper uses the interface through ASIO, whether ReaperVC can open the same input at the same time depends on the interface's driver. If it can't, use a separate mic for voice commands (USB mic, webcam) or run Reaper in WASAPI shared mode.
+- Runtime files (`reapervc.log`, telemetry) are written to `%TEMP%` instead of `/tmp`.
+
 ### 2. Set Up Reaper
 
 1. Install [SWS Extension](https://www.sws-extension.org/)
@@ -213,7 +227,7 @@ Every session saves a complete telemetry log to extras/telemetry.md:
 - **Action Name Mapping** - Makes configs portable across REAPER installations
 
 ## Requirements
-- Currently ReaperVC is made for Linux Reaper users. It should be relatively easy to adapt it to Windows, but so far has never been tried.
+- ReaperVC is made for Linux Reaper users. Windows support is experimental (see Quick Start).
 
 ### Hardware
 - **Microphone** (any USB mic works)

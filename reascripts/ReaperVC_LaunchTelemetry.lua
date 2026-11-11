@@ -3,7 +3,14 @@
 -- This script runs once and launches the telemetry monitor
 -- Author: ReaperVC Project
 
+-- Shared helpers (ReaperVC_Common.lua must be in the same folder as this script)
+local VC = dofile(debug.getinfo(1, "S").source:match("^@?(.*[/\\])") .. "ReaperVC_Common.lua")
+
 local REAPERVC_PATH = reaper.GetExtState("ReaperVC", "install_path")
+if REAPERVC_PATH == "" and VC.HasLauncher(VC.DefaultPath()) then
+	-- Not configured, but the scripts were loaded from inside the install folder
+	REAPERVC_PATH = VC.DefaultPath()
+end
 if REAPERVC_PATH == "" then
 	reaper.ShowMessageBox(
 		"ReaperVC installation path not configured.\n\n" ..
@@ -15,13 +22,13 @@ if REAPERVC_PATH == "" then
 	return
 end
 
-local telemetry_path = REAPERVC_PATH .. "/reascripts/ReaperVC_Telemetry.lua"
+local telemetry_path = REAPERVC_PATH .. VC.sep .. "reascripts" .. VC.sep .. "ReaperVC_Telemetry.lua"
 
 -- First, signal any existing telemetry monitor to stop
 reaper.SetExtState("ReaperVC", "telemetry_running", "false", false)
 
 -- Write stop flag file for old instance
-local flag_file = io.open("/tmp/reapervc_stop_telemetry", "w")
+local flag_file = io.open(VC.STOP_TELEMETRY_FLAG, "w")
 if flag_file then
 	flag_file:write("stop")
 	flag_file:close()
@@ -34,7 +41,7 @@ while reaper.time_precise() - start_time < 0.3 do
 end
 
 -- Remove stop flag
-os.remove("/tmp/reapervc_stop_telemetry")
+os.remove(VC.STOP_TELEMETRY_FLAG)
 
 -- Now start fresh instance
 reaper.SetExtState("ReaperVC", "telemetry_running", "true", false)

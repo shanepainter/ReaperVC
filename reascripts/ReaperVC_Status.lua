@@ -3,46 +3,18 @@
 -- Author: ReaperVC Project
 -- Version: 1.0
 
+-- Shared helpers (ReaperVC_Common.lua must be in the same folder as this script)
+local VC = dofile(debug.getinfo(1, "S").source:match("^@?(.*[/\\])") .. "ReaperVC_Common.lua")
+
 -- Configuration
 local REAPERVC_PATH = reaper.GetExtState("ReaperVC", "install_path")
 if REAPERVC_PATH == "" then
-	REAPERVC_PATH = os.getenv("HOME") .. "/Apps/Audio/ReaperVC"
+	REAPERVC_PATH = VC.DefaultPath()
 end
 
 -- Helper Functions
-function IsReaperVCRunning()
-	-- Very specific check - look ONLY for Python process (not bash shells)
-	local handle = io.popen("pgrep -f '^python.*src/reapervc' 2>/dev/null")
-	if not handle then
-		return false
-	end
-	local result = handle:read("*a")
-	handle:close()
-
-	-- Additional verification - check if result contains actual PID
-	if result and result ~= "" then
-		-- Trim whitespace and check if it's a valid number
-		result = result:gsub("^%s*(.-)%s*$", "%1")
-		if tonumber(result) then
-			return true
-		end
-	end
-
-	return false
-end
-
-function GetProcessInfo()
-	local handle = io.popen("ps aux | grep 'python.*reapervc.py' | grep -v grep 2>/dev/null")
-	if not handle then
-		return "Unable to get process info"
-	end
-	local result = handle:read("*a")
-	handle:close()
-	return result
-end
-
 function ReadLastLog()
-	local f = io.open("/tmp/reapervc.log", "r")
+	local f = io.open(VC.LOG_FILE, "r")
 	if not f then
 		return "No log file found"
 	end
@@ -64,11 +36,11 @@ end
 function Main()
 	local status_msg = "ReaperVC Status\n" .. string.rep("=", 50) .. "\n\n"
 
-	if IsReaperVCRunning() then
+	if VC.IsRunning() then
 		status_msg = status_msg .. "Status: RUNNING ✓\n\n"
 
 		-- Show process info
-		local proc_info = GetProcessInfo()
+		local proc_info = VC.ProcessInfo()
 		if proc_info ~= "" then
 			status_msg = status_msg .. "Process Info:\n" .. proc_info .. "\n"
 		end
@@ -81,7 +53,7 @@ function Main()
 		status_msg = status_msg .. "  Actions → ReaperVC Start\n"
 		status_msg = status_msg .. "\nOr run manually:\n"
 		status_msg = status_msg .. "  cd " .. REAPERVC_PATH .. "\n"
-		status_msg = status_msg .. "  ./reaper-vc.sh"
+		status_msg = status_msg .. "  " .. (VC.is_windows and "" or "./") .. VC.launcher
 	end
 
 	-- Output to console and message box

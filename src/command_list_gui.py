@@ -388,13 +388,13 @@ def launch_command_list(commands_config):
 if __name__ == "__main__":
 	# Load test data
 	commands_path = Path(__file__).parent.parent / "config" / "default_commands.yaml"
-	with open(commands_path, 'r') as f:
+	with open(commands_path, 'r', encoding='utf-8') as f:
 		commands_config = yaml.safe_load(f)
 
 	# Load custom commands
 	custom_commands_path = Path(__file__).parent.parent / "config" / "custom_commands.yaml"
 	if custom_commands_path.exists():
-		with open(custom_commands_path, 'r') as f:
+		with open(custom_commands_path, 'r', encoding='utf-8') as f:
 			custom_config = yaml.safe_load(f)
 			if custom_config and 'commands' in custom_config:
 				for cmd_name, cmd_config in custom_config['commands'].items():

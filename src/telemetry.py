@@ -2,11 +2,12 @@
 Telemetry Logger
 Captures all debug and diagnostic output for troubleshooting
 Logs are written to /extras/telemetry.md on app shutdown
-Live telemetry written to /tmp/reapervc_telemetry.log
+Live telemetry written to reapervc_telemetry.log in the runtime dir (see runtime_paths.py)
 """
 
 import datetime
 from pathlib import Path
+from runtime_paths import TELEMETRY_LOG
 
 
 class Telemetry:
@@ -17,7 +18,7 @@ class Telemetry:
 	_instance = None
 	_logs = []
 	_session_start = None
-	_live_log_file = "/tmp/reapervc_telemetry.log"
+	_live_log_file = TELEMETRY_LOG
 
 	def __new__(cls):
 		if cls._instance is None:
@@ -26,7 +27,7 @@ class Telemetry:
 			cls._session_start = datetime.datetime.now()
 			# Clear/create live log file
 			try:
-				with open(cls._live_log_file, 'w') as f:
+				with open(cls._live_log_file, 'w', encoding='utf-8') as f:
 					f.write(f"=== ReaperVC Telemetry - {cls._session_start.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
 			except Exception:
 				pass
@@ -58,7 +59,7 @@ class Telemetry:
 			clean_msg = message.replace('\n', ' ').strip()
 			console_msg = f"[{timestamp_str}] [{category:8}] {clean_msg}\n"
 
-			with open(cls._live_log_file, 'a') as f:
+			with open(cls._live_log_file, 'a', encoding='utf-8') as f:
 				f.write(console_msg)
 				f.flush()  # Force immediate write to disk
 		except Exception:
@@ -72,7 +73,7 @@ class Telemetry:
 		Args:
 			filepath: Path to telemetry.md file
 		"""
-		with open(filepath, 'w') as f:
+		with open(filepath, 'w', encoding='utf-8') as f:
 			f.write("# ReaperVC Telemetry Log\n\n")
 			f.write(f"**Session Start:** {cls._session_start.strftime('%Y-%m-%d %H:%M:%S')}\n")
 			f.write(f"**Session Duration:** {(datetime.datetime.now() - cls._session_start).total_seconds():.2f}s\n")

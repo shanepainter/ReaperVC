@@ -4,17 +4,42 @@ Simulates keyboard input for typing text into Reaper track names, etc.
 """
 
 import subprocess
+import sys
 import time
 from typing import Optional
+
+# xdotool key names (as used by press_key in the command configs) that differ
+# from pynput's Key names. Anything not listed is tried lower-cased.
+_PYNPUT_KEY_NAMES = {
+	'return': 'enter',
+	'escape': 'esc',
+	'backspace': 'backspace',
+	'prior': 'page_up',
+	'next': 'page_down',
+	'control': 'ctrl',
+	'super': 'cmd',
+}
 
 
 class KeyboardInput:
 	"""
-	Handles keyboard input simulation using xdotool (Linux)
+	Handles keyboard input simulation using xdotool (Linux) or pynput (Windows)
 	"""
 
 	def __init__(self):
 		"""Initialize the keyboard input handler"""
+		self._pynput = None
+		if sys.platform == "win32":
+			try:
+				from pynput import keyboard
+				self._pynput = keyboard
+				self._controller = keyboard.Controller()
+				self.available = True
+			except Exception as e:
+				print(f"[Warning] pynput not available - keyboard input disabled: {e}")
+				self.available = False
+			return
+
 		# Check if xdotool is available
 		try:
 			result = subprocess.run(
@@ -42,7 +67,7 @@ class KeyboardInput:
 			bool: True if successful, False otherwise
 		"""
 		if not self.available:
-			print("[Keyboard] xdotool not available")
+			print("[Keyboard] Keyboard backend not available")
 			return False
 
 		if not text:
@@ -52,6 +77,10 @@ class KeyboardInput:
 			# Small delay to allow window/field to focus
 			if delay > 0:
 				time.sleep(delay)
+
+			if self._pynput:
+				self._controller.type(text)
+				return True
 
 			# Use xdotool to type the text directly
 			# Don't try to change window focus - let it type wherever focus already is
@@ -92,12 +121,15 @@ class KeyboardInput:
 			bool: True if successful, False otherwise
 		"""
 		if not self.available:
-			print("[Keyboard] xdotool not available")
+			print("[Keyboard] Keyboard backend not available")
 			return False
 
 		try:
 			if delay > 0:
 				time.sleep(delay)
+
+			if self._pynput:
+				return self._press_key_pynput(key)
 
 			result = subprocess.run(
 				['xdotool', 'key', '--clearmodifiers', key],
@@ -118,6 +150,26 @@ class KeyboardInput:
 		except Exception as e:
 			print(f"[Keyboard] Error: {e}")
 			return False
+
+	def _press_key_pynput(self, key: str) -> bool:
+		"""Press an xdotool-style key or combo (e.g. "Return", "ctrl+s") via pynput"""
+		keys = []
+		for name in key.split('+'):
+			lowered = name.strip().lower()
+			lowered = _PYNPUT_KEY_NAMES.get(lowered, lowered)
+			if hasattr(self._pynput.Key, lowered):
+				keys.append(getattr(self._pynput.Key, lowered))
+			elif len(name.strip()) == 1:
+				keys.append(name.strip())
+			else:
+				print(f"[Keyboard] Unknown key: {name}")
+				return False
+
+		for k in keys:
+			self._controller.press(k)
+		for k in reversed(keys):
+			self._controller.release(k)
+		return True
 
 	def type_and_enter(self, text: str, delay: float = 0.1) -> bool:
 		"""
@@ -143,7 +195,7 @@ if __name__ == "__main__":
 	kb = KeyboardInput()
 
 	if kb.available:
-		print("✓ xdotool is available")
+		print("✓ Keyboard backend is available")
 		print("\nTest 1: Type 'Hello World' in 3 seconds...")
 		time.sleep(3)
 		kb.type_text("Hello World")
@@ -154,5 +206,6 @@ if __name__ == "__main__":
 		kb.press_key('Return')
 		print("✓ Enter pressed")
 	else:
-		print("✗ xdotool not available")
-		print("Install with: sudo apt-get install xdotool")
+		print("✗ Keyboard backend not available")
+		print("Linux: sudo apt-get install xdotool")
+		print("Windows: pip install pynput")

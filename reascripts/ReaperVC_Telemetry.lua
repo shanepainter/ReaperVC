@@ -3,8 +3,11 @@
 -- Author: ReaperVC Project
 -- Version: 1.0
 
+-- Shared helpers (ReaperVC_Common.lua must be in the same folder as this script)
+local VC = dofile(debug.getinfo(1, "S").source:match("^@?(.*[/\\])") .. "ReaperVC_Common.lua")
+
 -- Configuration
-local TELEMETRY_FILE = "/tmp/reapervc_telemetry.log"
+local TELEMETRY_FILE = VC.TELEMETRY_FILE
 local UPDATE_INTERVAL = 0.1  -- Check for new lines every 100ms
 
 -- State
@@ -22,10 +25,10 @@ function ReadNewLines()
 	end
 
 	-- Check for stop flag file (ReaperVC shutdown)
-	local flag_file = io.open("/tmp/reapervc_stop_telemetry", "r")
+	local flag_file = io.open(VC.STOP_TELEMETRY_FLAG, "r")
 	if flag_file then
 		flag_file:close()
-		os.remove("/tmp/reapervc_stop_telemetry")
+		os.remove(VC.STOP_TELEMETRY_FLAG)
 		running = false
 		return
 	end

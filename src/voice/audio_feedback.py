@@ -46,8 +46,10 @@ class AudioFeedback:
 
 		self.output_device = None
 
-		if not self.use_jack:
+		import sys
+		if not self.use_jack and sys.platform != "win32":
 			# Normal mode: Use sounddevice directly
+			# (Windows skips this and plays to the system default device)
 			try:
 				import sounddevice as sd
 				devices = sd.query_devices()

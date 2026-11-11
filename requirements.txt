@@ -8,13 +8,15 @@ openai-whisper>=20231117
 pyaudio>=0.2.13
 sounddevice>=0.4.6  # Audio feedback playback
 soundfile>=0.12.1  # Audio file I/O
-webrtcvad>=2.0.10  # Voice Activity Detection
+webrtcvad>=2.0.10; sys_platform != "win32"  # Voice Activity Detection
+webrtcvad-wheels>=2.0.10; sys_platform == "win32"  # Same module, prebuilt (no C compiler needed)
 numpy>=1.24.0
 scipy>=1.11.0  # Audio resampling in Whisper STT
 
 # Configuration and utilities
 pyyaml>=6.0
 python-dotenv>=1.0.0
+pynput>=1.7.6; sys_platform == "win32"  # Keyboard input (Linux uses xdotool)
 word2number>=1.1  # Convert spoken numbers to digits (e.g., "one twenty" -> 120)
 
 # Development and testing
